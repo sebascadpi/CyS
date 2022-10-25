@@ -107,10 +107,11 @@ public class EncryptDecrypt extends JFrame {
         Cipher cipher;
         byte[] decrypted = null;
         try {
+        	
             cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
             cipher.init(Cipher.DECRYPT_MODE, key);
             decrypted = cipher.doFinal(textCryp);
-            guardao = true;
+            
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -119,7 +120,7 @@ public class EncryptDecrypt extends JFrame {
     }
 	
 	public static void saveFile(byte[] bytes, String file, String folder) throws IOException {
-
+		
         FileOutputStream fos = new FileOutputStream(folder +file);
         fos.write(bytes);
         fos.close();
@@ -143,6 +144,7 @@ public class EncryptDecrypt extends JFrame {
 	                KeyGenerator keyGen = KeyGenerator.getInstance("AES");
 	                keyGen.init(256); 
 	                SecretKey key = keyGen.generateKey();
+	                String id = archivos[i].getName();
 	
 	                //Guardamos la clave en claves.txt 
 	                String encodedKey = Base64.getEncoder().encodeToString(key.getEncoded());
@@ -150,7 +152,7 @@ public class EncryptDecrypt extends JFrame {
 	                System.out.println("Original " +encodedKey);
 	                System.out.println("Original " + key);
 	
-	                myWriter.write(encodedKey+"\n");
+	                myWriter.write(encodedKey+" "+ id +"\n");
 	                                
 	                byte[] content = getFile(archivos[i]);	
 	                byte[] encrypted = encryptFile(key, content);
@@ -180,20 +182,29 @@ public class EncryptDecrypt extends JFrame {
             	String abuelo = f.getParent();
             	System.out.println(abuelo);
             	File saber = new File(abuelo+"/Desencriptadas");
+            	String[] parts;
+             	String llave = ""; 
+             	String id = ""; 
             	 try {
                      //Leemos las rutas de las claves del archivo claves.txt
                      Scanner scanner = new Scanner(new File(abuelo+"\\Clave\\claves.txt"));
                      
                      ArrayList<SecretKey> claves = new ArrayList<SecretKey>();	
+                     ArrayList<String> ids = new ArrayList<String>();
                      while (scanner.hasNextLine()) {                
 		
                         //Leemos la clave del fichero y la decodificamos
                         String linea = scanner.nextLine();
                         System.out.println("linea " + linea);
+                        parts = linea.split(" ");
+                        llave=parts[0];
+                        id=parts[1];
 
-                        byte[] decodedKey = Base64.getDecoder().decode(linea);
+                        byte[] decodedKey = Base64.getDecoder().decode(llave);
                         SecretKey key = new SecretKeySpec(decodedKey, 0, decodedKey.length, "AES"); 
+                        
                         claves.add(key);
+                        ids.add(id);
                         System.out.println("Descifro " + key);
                      }
 		                        
@@ -201,14 +212,14 @@ public class EncryptDecrypt extends JFrame {
 		                    
 		                    if (file.isFile()) {
 		                    	System.out.println(file.getName());
-		                        byte[] content = getFile(file);		                        
-		                        guardao = false;
+		                        byte[] content = getFile(file);
 		                        
 		                        //Desencriptamos
-		                        for(int i = 0;i < claves.size() && guardao == false; i++) {
-		                        	byte[] decrypted = decryptFile(claves.get(i), content);
+		                        for(int i = 0;i < claves.size() && ids.get(i)!=file.getName(); i++) {
 		                        	
-		                        	if(guardao == true) {
+		                        	if(ids.get(i).compareTo(file.getName())==0) {
+		                        		
+		                        		byte[] decrypted = decryptFile(claves.get(i), content);
 		                        		
 		                        		if(!saber.exists()) 
 		                        			new File(abuelo+"/Desencriptadas").mkdirs();		                        		
@@ -301,11 +312,11 @@ public class EncryptDecrypt extends JFrame {
 					if(funcionadec) {
 						
 						if(n==1) {
-							mensaje="El archivo que has seleccionado ha sido encriptado y guardado en la carpeta \n";
+							mensaje="El archivo que has seleccionado ha sido desencriptado y guardado en la carpeta \n";
 							mensaje2="Archivo Desencriptado";
 						}
 						else {
-							mensaje="<html><center>Los "+n+" archivos que has seleccionado han sido encriptados y guardados en la carpeta \n";
+							mensaje="<html><center>Los "+n+" archivos que has seleccionado han sido desencriptados y guardados en la carpeta \n";
 							mensaje2="Archivos Desencriptados";
 						}
 						JLabel label = new JLabel("<html><center>"+mensaje+"<br>"+s2);
