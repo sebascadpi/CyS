@@ -143,8 +143,7 @@ public class EncryptDecrypt extends JFrame {
 		            }
 	        	}
 	        } 
-		}
-	 	
+		}	 	
 		return dev;		
 	}
 	
