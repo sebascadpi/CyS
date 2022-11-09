@@ -2,7 +2,6 @@ package Interfaz;
 
 import java.awt.BorderLayout;
 
-
 import java.awt.Color;
 import java.awt.EventQueue;
 import java.awt.Font;
@@ -20,7 +19,10 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URL;
 import java.security.Key;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Base64;
 import java.util.Scanner;
@@ -67,12 +69,11 @@ public class EncryptDecrypt extends JFrame {
 			@SuppressWarnings("deprecation")
 			public void run() {
 				try {					
-					
 					JPanel panel = new JPanel(new BorderLayout(5, 5));
 
 				    JPanel label = new JPanel(new GridLayout(0, 1, 2, 2));
 				    label.add(new JLabel("Usuario", SwingConstants.RIGHT));
-				    label.add(new JLabel("ContraseÃ±a", SwingConstants.RIGHT));
+				    label.add(new JLabel("Contraseña", SwingConstants.RIGHT));
 				    panel.add(label, BorderLayout.WEST);
 				    
 				    JPanel controls = new JPanel(new GridLayout(0, 1, 2, 2));
@@ -81,12 +82,10 @@ public class EncryptDecrypt extends JFrame {
 				    JPasswordField password = new JPasswordField();
 				    controls.add(password);
 				    panel.add(controls, BorderLayout.CENTER);
+				    JOptionPane.showMessageDialog(null, panel, "Inicio de Sesión", JOptionPane.OK_CANCEL_OPTION);
+				    String ps = getZip(1);			    
 				    
-				    String ps = getZip(1);
-
-				    JOptionPane.showMessageDialog(null, panel, "Inicio de SesiÃ³n", JOptionPane.OK_CANCEL_OPTION);
-				    
-				    if(us.equals(username.getText()) && ps.equals(password.getText())) {
+				    if(us.equals(username.getText()) && ps.equals(getSecurePassword(password.getText(), getSalt()))) {
 				    	
 				    	EncryptDecrypt frame = new EncryptDecrypt();
 						frame.setTitle("Sistema de Encriptado/Desencriptado");
@@ -94,7 +93,7 @@ public class EncryptDecrypt extends JFrame {
 						frame.setLocationRelativeTo(null);				    	
 				    }
 				    else if (!(username.getText().equals("") && password.getText().equals(""))) {
-				    	JOptionPane.showMessageDialog(null,"El usuario o la contraseÃ±a son incorrectos","AtenciÃ³n",JOptionPane.ERROR_MESSAGE);
+				    	JOptionPane.showMessageDialog(null,"El usuario o la contraseña son incorrectos","Atención",JOptionPane.ERROR_MESSAGE);
 				    }				    
 				    
 				} catch (Exception e) {
@@ -117,8 +116,7 @@ public class EncryptDecrypt extends JFrame {
         		a = "rsa_pub.txt";        		
         	break;
         	case 3:
-        		a = "rsa_pvt.txt";
-        		
+        		a = "rsa_pvt.txt";        		
         }
         
      // Extraemos el archivo
@@ -146,9 +144,33 @@ public class EncryptDecrypt extends JFrame {
 	        	}
 	        } 
 		}
-	 	
+		
 		return dev;		
 	}
+	
+	public static String getSecurePassword(String password, byte[] salt) {
+
+        String generatedPassword = null;
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] bytes = md.digest(password.getBytes());
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < bytes.length; i++) {
+                sb.append(Integer.toString((bytes[i] & 0xff) + 0x100, 16).substring(1));
+            }
+            generatedPassword = sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        return generatedPassword;
+    }
+
+    private static byte[] getSalt() throws NoSuchAlgorithmException {
+        SecureRandom random = new SecureRandom();
+        byte[] salt = new byte[16];
+        random.nextBytes(salt);
+        return salt;
+    }	
 	
 	public static byte[] getFile(File f) {
 
@@ -193,8 +215,7 @@ public class EncryptDecrypt extends JFrame {
 		
 		Cipher cipher = null;		
 		String encryptedAES = "";
-		try {
-	        
+		try {	        
 	        cipher=Cipher.getInstance("RSA/ECB/PKCS1Padding");
 	        cipher.init(Cipher.ENCRYPT_MODE, rsa.PublicKey);
 	        
@@ -263,7 +284,7 @@ public class EncryptDecrypt extends JFrame {
 	    	File clavesAes = new File(padre+"/Claves","aes.txt");
 	    	FileWriter myWriteraes = new FileWriter(clavesAes);
 	    	
-	    	// Pillamos la clave pÃºblica del zip
+	    	// Pillamos la clave pública del zip
 	    	rsa.setPublicKeyString(getZip(2));
 	    	
 	        try {
@@ -371,7 +392,7 @@ public class EncryptDecrypt extends JFrame {
 	        	String mensaje="";
 	        	JLabel label = new JLabel("<html><center>"+mensaje+"<br>");
 				label.setHorizontalAlignment(SwingConstants.CENTER);
-	        	JOptionPane.showMessageDialog(null,"No se han podido encontrar las claves para desencriptar los archivos","AtenciÃ³n",JOptionPane.ERROR_MESSAGE);
+	        	JOptionPane.showMessageDialog(null,"No se han podido encontrar las claves para desencriptar los archivos","Atención",JOptionPane.ERROR_MESSAGE);
 	        	System.out.println(e);
 	        }
 	}
