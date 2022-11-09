@@ -1,14 +1,13 @@
 package Interfaz;
 
 import java.awt.BorderLayout;
-
-
 import java.awt.Color;
 import java.awt.EventQueue;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -16,11 +15,8 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.security.Key;
 import java.security.PrivateKey;
 import java.security.spec.InvalidKeySpecException;
@@ -85,7 +81,6 @@ public class EncryptDecrypt extends JFrame {
 				    panel.add(controls, BorderLayout.CENTER);
 				    
 				    String ps = getZip(1);
-
 				    JOptionPane.showMessageDialog(null, panel, "Inicio de Sesión", JOptionPane.OK_CANCEL_OPTION);
 				    
 				    if(us.equals(username.getText()) && ps.equals(password.getText())) {
@@ -110,15 +105,7 @@ public class EncryptDecrypt extends JFrame {
 	public static String getZip(int i) throws Exception {
 		String dev="";
 		
-		// Pillamos la dirección del zip con la contraseña
-		InputStream is = EncryptDecrypt.class.getClassLoader().getResourceAsStream("compressedadmin.zip");
-		
-	   
-		new File("Claves").mkdirs();
-	 	Path file = Paths.get("Claves");
-	 	Files.setAttribute(file, "dos:hidden", true);
-		
-        String a ="";
+		String a ="";
         switch(i) {
         	case 1:
         		a = "pass.txt";        		
@@ -132,29 +119,30 @@ public class EncryptDecrypt extends JFrame {
         }
         
      // Extraemos el archivo
-        File archivo = new File("Claves/"+a);
-        System.out.println(archivo.getAbsolutePath());
-        
-        Boolean bool = false;
-        try(ZipInputStream z = new ZipInputStream(is, "password".toCharArray())) {
+        InputStream is = EncryptDecrypt.class.getClassLoader().getResourceAsStream("compressedadmin.zip");
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        byte[] readBuffer = new byte[4096];
+    	Boolean bool = false;
+    	int readLen;
+    	
+		try(ZipInputStream z = new ZipInputStream(is, "password".toCharArray())) {
 	        LocalFileHeader localFileHeader;
 	        
 	        while ((localFileHeader = z.getNextEntry()) != null && bool == false) {
-	        	System.out.println(localFileHeader.getFileName());
 	        	if(localFileHeader.getFileName().equals(a)) {
 	        		
-			        Files.copy(z, archivo.toPath(), StandardCopyOption.REPLACE_EXISTING);
-			        bool = true;
+		            try (OutputStream outputStream = baos) {
+		            	
+		            	while ((readLen = z.read(readBuffer)) != -1) 
+		            		outputStream.write(readBuffer, 0, readLen);
+		            	
+		            	dev = baos.toString();
+		            	System.out.println("Lo que se devuelve getString(): " + dev);
+		            	bool = true;
+		            }
 	        	}
-	        }
-        
-        }
-        
-        System.out.println(archivo.exists());
-	 	Scanner scan = new Scanner(archivo);
-	 	dev = scan.nextLine();
-	 	System.out.println(dev);
-	 	scan.close();
+	        } 
+		}
 	 	
 		return dev;		
 	}
@@ -202,8 +190,7 @@ public class EncryptDecrypt extends JFrame {
 		
 		Cipher cipher = null;		
 		String encryptedAES = "";
-		try {
-	        
+		try {	        
 	        cipher=Cipher.getInstance("RSA/ECB/PKCS1Padding");
 	        cipher.init(Cipher.ENCRYPT_MODE, rsa.PublicKey);
 	        
@@ -353,27 +340,27 @@ public class EncryptDecrypt extends JFrame {
                         System.out.println("Descifro " + key);
                      }
 		                        
-                        for (File file : archivos) {
-		                    
-		                    if (file.isFile()) {
-		                    	
-		                        byte[] content = getFile(file);
-		                        
-		                        //Desencriptamos
-		                        for(int i = 0;i < claves.size() && ids.get(i)!=file.getName(); i++) {
-		                        	
-		                        	if(ids.get(i).equals(file.getName())) {
-		                        		System.out.println(file.getName());
-		                        		byte[] decrypted = decryptFile(claves.get(i), content);
-		                        		
-		                        		if(!saber.exists()) 
-		                        			new File(abuelo+"/Desencriptadas").mkdirs();		                        		
-		                        		
-			                        	saveFile(decrypted,file.getName(),abuelo+"/Desencriptadas/");
-		                        	}
-		                        }                 
-		                    }
-		                }
+                    for (File file : archivos) {
+	                    
+	                    if (file.isFile()) {
+	                    	
+	                        byte[] content = getFile(file);
+	                        
+	                        //Desencriptamos
+	                        for(int i = 0;i < claves.size() && ids.get(i)!=file.getName(); i++) {
+	                        	
+	                        	if(ids.get(i).equals(file.getName())) {
+	                        		System.out.println(file.getName());
+	                        		byte[] decrypted = decryptFile(claves.get(i), content);
+	                        		
+	                        		if(!saber.exists()) 
+	                        			new File(abuelo+"/Desencriptadas").mkdirs();		                        		
+	                        		
+		                        	saveFile(decrypted,file.getName(),abuelo+"/Desencriptadas/");
+	                        	}
+	                        }                 
+	                    }
+	                }
                     
 	        } catch (FileNotFoundException e) {
 	        	funcionadec = false;
@@ -385,29 +372,6 @@ public class EncryptDecrypt extends JFrame {
 	        }
 	}
 	
-	//Codigo para crear zips - pa la entrega 3
-	
-//  File admin = new File(padre+"/Claves","pass.txt");
-//  FileWriter pass = new FileWriter(admin);
-//  
-//  pass.write("admin");
-//  
-//  pass.close();
-//  
-//  ZipParameters zipParameters = new ZipParameters();
-//	zipParameters.setEncryptFiles(true);
-//	zipParameters.setEncryptionMethod(EncryptionMethod.AES);
-//
-//	List<File> filesToAdd = Arrays.asList(
-//	  clavePvt,
-//	  admin    		  
-//	);
-//
-//	ZipFile zipFile = new ZipFile("compressed.zip", "password".toCharArray());
-//	zipFile.addFiles(filesToAdd, zipParameters);
-//	zipFile.addFile(clavePub);
-	
-
 	/**
 	 * Create the frame.
 	 */
@@ -498,9 +462,7 @@ public class EncryptDecrypt extends JFrame {
 				} catch (Exception e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
-				}
-				
-				
+				}			
 			}
 		});
 		
@@ -546,7 +508,6 @@ public class EncryptDecrypt extends JFrame {
 		URL url = EncryptDecrypt.class.getResource("/matrix.gif");
 		lblFondo.setIcon(new ImageIcon(url));
 		lblFondo.setBounds(2, 20, 588, 310);
-		contentPane.add(lblFondo);
-			
+		contentPane.add(lblFondo);			
 	}	
 }
