@@ -116,8 +116,7 @@ public class EncryptDecrypt extends JFrame {
         		a = "rsa_pub.txt";        		
         	break;
         	case 3:
-        		a = "rsa_pvt.txt";
-        		
+        		a = "rsa_pvt.txt";        		
         }
         
      // Extraemos el archivo
