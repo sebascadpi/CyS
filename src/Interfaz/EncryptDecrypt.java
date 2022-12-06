@@ -1,7 +1,6 @@
 package Interfaz;
 
 import java.awt.BorderLayout;
-
 import java.awt.Color;
 import java.awt.EventQueue;
 import java.awt.Font;
@@ -19,7 +18,6 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.security.Key;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -65,11 +63,10 @@ public class EncryptDecrypt extends JFrame {
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
-	public static boolean funcionadec = true;
-	public static boolean funcionaen = true;
 	public static boolean guardao = false;
 	private JPanel contentPane;
 	public static String us = "admin";
+	public static String ps = "";
 	/**
 	 * Launch the application.
 	 */
@@ -77,14 +74,18 @@ public class EncryptDecrypt extends JFrame {
 		EventQueue.invokeLater(new Runnable() {
 			@SuppressWarnings("deprecation")
 			public void run() {
-				try {		
+				try {
+					
+					// Creamos el panel de inicio de sesión
 					JPanel panel = new JPanel(new BorderLayout(5, 5));
-
+					
+					// Creamos las etiquetas de usuario y contraseña y las añadimos al panel
 				    JPanel label = new JPanel(new GridLayout(0, 1, 2, 2));
 				    label.add(new JLabel("Usuario", SwingConstants.RIGHT));
 				    label.add(new JLabel("Contraseña", SwingConstants.RIGHT));
 				    panel.add(label, BorderLayout.WEST);
 				    
+				    // Creamos los inputs de usuario y contraseña y los añadimos al panel
 				    JPanel controls = new JPanel(new GridLayout(0, 1, 2, 2));
 				    JTextField username = new JTextField();
 				    controls.add(username);
@@ -92,28 +93,35 @@ public class EncryptDecrypt extends JFrame {
 				    controls.add(password);
 				    panel.add(controls, BorderLayout.CENTER);
 				    
+				    // Iniciamos el panel
 				    JOptionPane.showMessageDialog(null, panel, "Inicio de Sesión", JOptionPane.OK_CANCEL_OPTION);
 				    
+				    // Revisamos el usuario y contraseña introducidos
 				    if(!username.getText().isBlank() && !password.getText().isBlank()) {
 				    	
+				    	// Asignamos la contraseña
+				    	ps = password.getText();
 					    ArrayList<String> users = getUsers();
 					    Boolean b = false;
-					    String ps = "";
+					    String pass = "";					    
 					    
-					    for(int i = 0; i < users.size() && b == false ; i++) {
-					    					    	
+					    // Si el usuario introducido existe en la base datos se asigna a la variable us global
+					    for(int i = 0; i < users.size() && b == false ; i++) {					    					    	
 					    	if(username.getText().equals(users.get(i))) {
-					    		us = users.get(i);
-					    		ps = getZip(1);
+					    		us = users.get(i);					    		
+					    		pass = getString("pass.txt");
 					    		b = true;
 					    	}
 					    }    
 					    
+					    // Revisamos si el usuario y la contraseña coinciden
 					    if(!b)
 					    	JOptionPane.showMessageDialog(null,"El usuario o la contraseña son incorrectos","Atención",JOptionPane.ERROR_MESSAGE);
 					    else if (password.getText().isBlank()) 
 					    	JOptionPane.showMessageDialog(null,"El usuario o la contraseña son incorrectos","Atención",JOptionPane.ERROR_MESSAGE);					    
-					    else if(ps.equals(getSecurePassword(password.getText(), getSalt(2)))) {
+					    else if(pass.equals(getSecurePassword(ps, getSalt(2)))) {
+					    	
+					    	// Iniciamos el frame de la aplicación
 					    	EncryptDecrypt frame = new EncryptDecrypt();
 							frame.setTitle("Sistema de Encriptado/Desencriptado");
 							frame.setVisible(true);
@@ -132,64 +140,50 @@ public class EncryptDecrypt extends JFrame {
 	
 	public static void crearAdmin() throws IOException {
 		
+		// Si la carpeta Usuarios no existe se crea
 		if(!new File("Usuarios").exists()) {
 			
+			// Creamos la carpeta
 			new File("Usuarios").mkdir();
 			new File("Usuarios/admin").mkdir();
 		 	Path file = Paths.get("Usuarios");
 		 	Files.setAttribute(file, "dos:hidden", true);
 			
-			ZipFile zAdmin = new ZipFile("Usuarios/admin/compressedadmin.zip", "password".toCharArray());		
+		 	// Creamos el zip del admin y los archivos que va a contener
+			ZipFile zAdmin = new ZipFile("Usuarios/admin/compressedadmin.zip", ps.toCharArray());		
 			
-			File archivoUsu = getArchivo("users.txt");
-			File archivoClv = getArchivo("passes.txt");
+			File archivoUsu = new File("users.txt");
+			File archivoClv = new File("passes.txt");
+			File archivoAes = new File("aes.txt");
 			
 			FileWriter Wusus = new FileWriter(archivoUsu);
 			FileWriter Wclvs = new FileWriter(archivoClv);
+			FileWriter Waes = new FileWriter(archivoAes);
 			
+			// Inicializamos los archivos
 	        Wusus.write("admin\n");	
 	        Wusus.close();
 	        Wclvs.close();
+	        Waes.close();
 	        
-	        List<File> filesToAdd = Arrays.asList(archivoUsu, archivoClv);	        
-	        
-	        ZipParameters zipParameters = new ZipParameters();
-			zipParameters.setEncryptFiles(true);
-			zipParameters.setEncryptionMethod(EncryptionMethod.AES);
-	        
-	        zAdmin.addFiles(filesToAdd, zipParameters);	        
+	        List<File> filesToAdd = Arrays.asList(archivoUsu, archivoClv, archivoAes);	        
+
+			// Añadimos los archivos y después los borramos
+	        zAdmin.addFiles(filesToAdd, getParameters());	        
 	        zAdmin.close();	        
 	        
 	        archivoUsu.delete();
 	        archivoClv.delete();
+	        archivoAes.delete();
 		}						
-	}
-	
-	public static File getArchivo(String s) throws IOException {	
-		
-		File archivo = null;		
-		
-		archivo = new File("Usuarios/admin/"+s);
-		
-		Boolean bool = false;
-		InputStream is = EncryptDecrypt.class.getClassLoader().getResourceAsStream("compressedadmin.zip");
-		
-        try(ZipInputStream z = new ZipInputStream(is, "password".toCharArray())) {
-	        LocalFileHeader localFileHeader;	        
-	        while ((localFileHeader = z.getNextEntry()) != null && bool == false) {
-	        	if(localFileHeader.getFileName().equals(s)) {	        		
-			        Files.copy(z, archivo.toPath(), StandardCopyOption.REPLACE_EXISTING);
-			        bool = true;
-	        	}
-	        }        
-        }       
-        return archivo;
 	}
 	
 	public static void addUyP(String usu, String pass) throws IOException {
 		
-		ZipFile zAdmin = new ZipFile("Usuarios/admin/compressedadmin.zip", "password".toCharArray());						
+		// Accedemos al zip del admin para añadir el nuevo usuario y contraseña
+		ZipFile zAdmin = new ZipFile("Usuarios/admin/compressedadmin.zip", ps.toCharArray());						
 		
+		// Pillamos las listas de usuarios y contraseñas
 		String u = getString("users.txt");
 		String p = getString("passes.txt");
         
@@ -199,20 +193,19 @@ public class EncryptDecrypt extends JFrame {
         FileWriter Wusus = new FileWriter(archivoUsu);
         FileWriter Wclvs = new FileWriter(archivoClv);
         
+        // Añadimos los datos del nuevo usuario
         Wusus.write(u+usu+"\n");
         Wclvs.write(p+pass+" "+usu+"\n");
         
         Wusus.close();
         Wclvs.close();
         
-        ZipParameters zipParameters = new ZipParameters();
-		zipParameters.setEncryptFiles(true);
-		zipParameters.setEncryptionMethod(EncryptionMethod.AES);
-        
+        // Se añaden al zip
         zAdmin.addFile(archivoUsu);
-        zAdmin.addFile(archivoClv, zipParameters);        
+        zAdmin.addFile(archivoClv, getParameters());        
         zAdmin.close();
 		
+        // Borramos los archivos creados para actualizar los que hay en el zip
         archivoUsu.delete();
         archivoClv.delete();
 	}
@@ -221,13 +214,16 @@ public class EncryptDecrypt extends JFrame {
 	public static Boolean deleteUyP() throws Exception {
 		Boolean dev = false;
 	
+		// Creamos el panel que pregunta datos para borrar el usuario
 		JPanel panel = new JPanel(new BorderLayout(5, 5));
-
+		
+		// Creamos y añadimos etiquetas
 	    JPanel label = new JPanel(new GridLayout(0, 1, 2, 2));
-	    label.add(new JLabel("Usuario", SwingConstants.LEFT));
-	    label.add(new JLabel("Contraseña", SwingConstants.LEFT));
+	    label.add(new JLabel("Usuario a borrar", SwingConstants.LEFT));
+	    label.add(new JLabel("Contraseña del admin", SwingConstants.LEFT));
 	    panel.add(label, BorderLayout.WEST);
 	    
+	    // Creamos y añadimos inputs
 	    JPanel controls = new JPanel(new GridLayout(0, 1, 2, 2));
 	    JTextField username = new JTextField();
 	    controls.add(username);
@@ -235,25 +231,24 @@ public class EncryptDecrypt extends JFrame {
 	    controls.add(password);
 	    panel.add(controls, BorderLayout.CENTER);
 	    
+	    // Enseñamos el panel
 	    JOptionPane.showMessageDialog(null, panel, "Borrar Usuario", JOptionPane.DEFAULT_OPTION);
 	    
 	    ArrayList<String> users = getUsers();
 	    Boolean b = false;
 	    
-	    for(int i = 0; i < users.size() && b == false ; i++) {
-	    	
-	    	if(username.getText().equals(users.get(i))) {    		
-	    		us = users.get(i);
+	    // Si el usuario introducido está dentro de la lista de usuarios se vamos a empezar a borrar el usuario
+	    for(int i = 0; i < users.size() && b == false ; i++) 	    	
+	    	if(username.getText().equals(users.get(i)))   		
 	    		b = true;
-	    	}
-	    }
-	
-	    if(!b) {
-	    	us = "admin";
+	    	
+	    if(!b) 
+	    	// No está en la lista de usuarios
 	    	JOptionPane.showMessageDialog(null,"El usuario o la contraseña son incorrectos","Atención",JOptionPane.ERROR_MESSAGE);
-	    }	    	
+	    	    	
 	    else {
-	    	String ps = getZip(1);
+	    	// Recogemos la contraseña del introducida para verificar si es la del admin
+	    	String pass = getString("pass.txt");
 	    	
 	    	if(password.getText().isBlank()) {
 	    		us = "admin";
@@ -262,18 +257,23 @@ public class EncryptDecrypt extends JFrame {
 	    	else if(username.getText().equals("admin")){
 	    		JOptionPane.showMessageDialog(null,"El usuario admin no se puede eliminar","Atención",JOptionPane.ERROR_MESSAGE);
 	    	}
-	    	else if(ps.equals(getSecurePassword(password.getText(), getSalt(2))))  {   		
-	    		ZipFile zAdmin = new ZipFile("Usuarios/admin/compressedadmin.zip", "password".toCharArray());						
+	    	else if(pass.equals(getSecurePassword(ps, getSalt(2))))  {   
 	    		
+	    		// Accedemos al zip del admin
+	    		ZipFile zAdmin = new ZipFile("Usuarios/admin/compressedadmin.zip", ps.toCharArray());						
+	    		
+	    		// Pillamos las listas de usuarios y contraseñas
 	    		String u = getString("users.txt");
 	    		String p = getString("passes.txt");
 	    		
+	    		// Creamos los archivos en los que vamos a actualizar los datos de los usuarios
 				File archivoUsu = new File("Usuarios/admin/users.txt");
 				File archivoClv = new File("Usuarios/admin/passes.txt");
 				
 				FileWriter Wusus = new FileWriter(archivoUsu);
 		        FileWriter Wclvs = new FileWriter(archivoClv);
 		        
+		        // Listas donde vamos a guardar los datos
 				ArrayList<String> lineaU = new ArrayList<String>();
 				ArrayList<String> lineaP = new ArrayList<String>();
 				
@@ -286,7 +286,8 @@ public class EncryptDecrypt extends JFrame {
 				for(String s2 : splP)
 					lineaP.add(s2);
 				
-				for(int i = 0; i < lineaP.size(); i++)
+				// Se añaden a las listas los usuarios que no coinciden con los datos del usuario a borrar
+				for(int i = 0; i < lineaU.size(); i++)
 					if(!lineaU.get(i).contains(username.getText())) 
 						Wusus.write(lineaU.get(i)+"\n");
 					
@@ -298,55 +299,64 @@ public class EncryptDecrypt extends JFrame {
 		        Wusus.close();
 		        Wclvs.close();
 		        
-		        ZipParameters zipParameters = new ZipParameters();
-				zipParameters.setEncryptFiles(true);
-				zipParameters.setEncryptionMethod(EncryptionMethod.AES);
-		        
+		        // Añadimos las listas sin el usuario a borrar
 		        zAdmin.addFile(archivoUsu);
-		        zAdmin.addFile(archivoClv, zipParameters);        
+		        zAdmin.addFile(archivoClv, getParameters());        
 		        zAdmin.close();
 				
-		        File f = new File("Usuarios/"+us+"/compressed"+us+".zip");
-		        File f2 = new File("Usuarios/"+us);
+		        // Borramos la carpeta del usuario borrado
+		        File f = new File("Usuarios/"+username.getText()+"/compressed"+username.getText()+".zip");
+		        File f2 = new File("Usuarios/"+username.getText());
 		        f.delete();
 		        f2.delete();
 		        
+		        // Borramos los archivos creados para actualizar las listas
 		        archivoUsu.delete();
 		        archivoClv.delete();
 	    		
+		        // En caso de que se haya borrado el usuario satisfactoriamente
+		    	String mensaje = "El usuario "+username.getText()+" ha sido borrado";
+		    	JLabel labele = new JLabel("<html><center>"+mensaje+"<br>");
+		    	JOptionPane.showMessageDialog(null, labele, "Usuario Borrado", JOptionPane.DEFAULT_OPTION);
+
 	    		dev = true; 
 	    	}
-	    	else {
-	    		us = "admin";
+	    	else 	    		
 	    		JOptionPane.showMessageDialog(null,"El usuario o la contraseña son incorrectos","Atención",JOptionPane.ERROR_MESSAGE);	    	
-	    	}
 	    }
 	    
-	    if(dev) {
-	    	String mensaje = "El usuario "+username.getText()+" ha sido borrado";
-	    	JLabel labele = new JLabel("<html><center>"+mensaje+"<br>");
-	    	JOptionPane.showMessageDialog(null, labele, "Usuario Borrado", JOptionPane.DEFAULT_OPTION);
-	    }
 	    return dev;
 	}
 	
 	public static String getString(String s) throws IOException{
 		String dev = "";
 		
+		// Creamos un stream donde almacenaremos los bytes del archivo que vamos a extraer del zip
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		
+		// Creamos un buffer con un tamaño fijo en el que vamos a meter los datos del archivo que vamos a extraer
         byte[] readBuffer = new byte[4096];
     	Boolean bool = false;
+    	
+    	// Creamos un entero donde vamos a revisar el número de bytes del archivo que vamos a extraer
     	int readLen;
 		
+    	// Si el archivo que queremos extraer es uno de los listados abajo y el usuario actual es el admin se van a extraer desde el zip del bin
 		if(us.equals("admin") && (s.equals("rsa_pub.txt") || s.equals("rsa_pvt.txt") || s.equals("pass.txt") || s.equals("sal.txt"))) {
+			
+			// Creamos un stream donde vamos a tener los datos del zip del bin
 			InputStream is = EncryptDecrypt.class.getClassLoader().getResourceAsStream("compressedadmin.zip");
 			
-			try(ZipInputStream z = new ZipInputStream(is, "password".toCharArray())) {
-		        LocalFileHeader localFileHeader;
+			// Creamos un stream donde tendremos acceso a los datos del zip en stream
+			try(ZipInputStream z = new ZipInputStream(is, ps.toCharArray())) {
+				LocalFileHeader localFileHeader;
 		        
-		        while ((localFileHeader = z.getNextEntry()) != null && bool == false) {
+				// Bucle donde se revisa el nombre de los archivos dentro del zip
+		        while ((localFileHeader = z.getNextEntry()) != null && bool == false) {		        	
 		        	if(localFileHeader.getFileName().equals(s)) {
 		        		
+		        		// Creamos un stream donde vamos a sacar los datos del del archivo
+		        		// y lo vamos a guardar en stream de bytes creado anteriormente
 			            try (OutputStream outputStream = baos) {
 			            	
 			            	while ((readLen = z.read(readBuffer)) != -1) 
@@ -359,23 +369,24 @@ public class EncryptDecrypt extends JFrame {
 		        	}
 		        }        
 	        }			
-		}
+		}		
+		// Si el archivo que queremos extraer distinto de los listados arriba el archivo se va a extraer de esta manera
 		else {
 			String original = "";
+			
+			// Esta condición es relevante para la eliminación de usuarios
 			if(!us.equals("admin") && (s.equals("users.txt") || s.equals("passes.txt"))) {
 				original = us;
 				us = "admin";
 			}
+			String ZipPass = ps;
 			
-			String ZipPass = "password"+us;
-			if(us.equals("admin"))
-				ZipPass = "password";
-			
+			// Accedemos al zip de donde queremos sacar el string
 			ZipFile zipFile = new ZipFile("Usuarios/"+us+"/compressed"+us+".zip", ZipPass.toCharArray());
-			System.out.println(s+" ");
 			FileHeader fileHeader = zipFile.getFileHeader(s);
 			InputStream inputStream = zipFile.getInputStream(fileHeader);
-
+			
+			// Guardamos los datos del archivo en un byte array que después vamos a traducir a string
 			while ((readLen = inputStream.read(readBuffer)) != -1) {
 			  baos.write(readBuffer, 0, readLen);
 			}
@@ -393,6 +404,8 @@ public class EncryptDecrypt extends JFrame {
 	@SuppressWarnings("deprecation")
 	public static Boolean newUsuario() throws Exception {
 		Boolean dev = false;
+		
+		// Panel donde preguntaremos los datos del nuevo usuario
 		JPanel panel = new JPanel(new BorderLayout(5, 5));
 
 	    JPanel label = new JPanel(new GridLayout(0, 1, 2, 2));
@@ -411,11 +424,13 @@ public class EncryptDecrypt extends JFrame {
 	    panel.add(controls, BorderLayout.CENTER);
 	    
 	    JOptionPane.showMessageDialog(null, panel, "Nuevo Usuario", JOptionPane.DEFAULT_OPTION);
-	    System.out.println("abierto");
+	    
+	    // Lista de usuarios
 	    ArrayList<String> users = getUsers();
 	    Boolean b = false;
-	    
-	   for(int i = 0; i < users.size() && b == false ; i++)	    					    	
+	   
+	    // Revisamos si el usuario introducido existe en la base de datos
+	    for(int i = 0; i < users.size() && b == false ; i++)	    					    	
 	    	if(username.getText().equals(users.get(i)))
 	    		b = true;
 	    
@@ -427,11 +442,14 @@ public class EncryptDecrypt extends JFrame {
 	    	JOptionPane.showMessageDialog(null, "Ni el usuario ni la contraseña pueden estar en blanco", "Atención", JOptionPane.ERROR_MESSAGE);	        
 	    else if(!b && pass.equals(reppass)) {
 	    	
+	    	// Creamos la nueva carpeta del usuario, sus claves tanto la pública y la privada 
+	    	// y también creamos los archivos donde vamos a guardar estos datos
 	    	new File("Usuarios/"+usu).mkdir();
 	    	
 	    	RSA rsa = new RSA();
 	    	rsa.genKeyPair(512);
 	    	
+	    	// Pillamos las claves y creamos la sal para la contraseña
 	    	String pub = rsa.getPublicKeyString();
 	    	String pvt = rsa.getPrivateKeyString();
 	    	String s = getSalt(1).toString();
@@ -440,12 +458,15 @@ public class EncryptDecrypt extends JFrame {
 	    	File clave = new File("Usuarios/"+usu+"/pass.txt");
 	    	File clavePub = new File("Usuarios/"+usu+"/rsa_pub.txt");
 	    	File clavePvt = new File("Usuarios/"+usu+"/rsa_pvt.txt");
+	    	File aes = new File("Usuarios/"+usu+"/aes.txt");
 	    	
 	    	FileWriter salt = new FileWriter(sal);
 	    	FileWriter wclv = new FileWriter(clave);
 	    	FileWriter wpub = new FileWriter(clavePub);
 	    	FileWriter wpvt = new FileWriter(clavePvt);
+	    	FileWriter waes = new FileWriter(aes);
 	    	
+	    	// Escribimos los datos en los nuevos archivos
 	    	salt.write(s);
 	    	wclv.write(getSecurePassword(pass, s.getBytes()));
 	    	wpub.write(pub);
@@ -455,35 +476,36 @@ public class EncryptDecrypt extends JFrame {
 	    	wclv.close();
 	    	wpub.close();
 	    	wpvt.close();
+	    	waes.close();
 	    	
-	    	ZipParameters zipParameters = new ZipParameters();
-			zipParameters.setEncryptFiles(true);
-			zipParameters.setEncryptionMethod(EncryptionMethod.AES);
-		    
 			List<File> filesToAdd = Arrays.asList(
 			  clavePvt,
-			  clave    		  
+			  clave,
+			  aes    		  
 		    );
 			
 			List<File> filesToAdd2 = Arrays.asList(
 			  clavePub,
-			  sal   		  
+			  sal
 		    );
-			
-			String zipPass = "password"+usu;
 		   
-	    	ZipFile zipFile = new ZipFile("Usuarios/"+usu+"/compressed"+usu+".zip", zipPass.toCharArray());
-			zipFile.addFiles(filesToAdd, zipParameters);
+			// Añadimos los archivos creados al nuevo zip
+	    	ZipFile zipFile = new ZipFile("Usuarios/"+usu+"/compressed"+usu+".zip", pass.toCharArray());
+			zipFile.addFiles(filesToAdd, getParameters());
 			zipFile.addFiles(filesToAdd2);
 			zipFile.close();
 			
+			// Borramos los nuevos archivos para no poder acceder a ellos desde fuera del zip
 			sal.delete();
 			clave.delete();
 			clavePub.delete();
 			clavePvt.delete();			
+			aes.delete();
 			
+			// Añadimos los datos de los usuarios al zip del admin
 			addUyP(usu, getSecurePassword(pass, s.getBytes()));
 			us = usu;
+			ps = pass;
 	    	
 	    	dev = true;
 	    }
@@ -499,6 +521,7 @@ public class EncryptDecrypt extends JFrame {
 	public static Boolean cambiarUsuario() throws Exception {
 		Boolean dev = false;
 		
+		// Panel donde preguntamos los datos
 		JPanel panel = new JPanel(new BorderLayout(5, 5));
 
 	    JPanel label = new JPanel(new GridLayout(0, 1, 2, 2));
@@ -515,33 +538,50 @@ public class EncryptDecrypt extends JFrame {
 	    
 	    JOptionPane.showMessageDialog(null, panel, "Cambiar Usuario", JOptionPane.DEFAULT_OPTION);
 	    
-	    String original = us;
+	    // Guardamos el usuario y contraseña actual para volver a ellas si acaso el cambio de usuario falla
+	    String origusu = us;
+	    String origps = ps;
+	    
+	    // Lista de usuarios
 	    ArrayList<String> users = getUsers();
 	    Boolean b = false;
 	    
-	    for(int i = 0; i < users.size() && b == false ; i++) {
-	    	
+	    // Si el usuario introducido existe en la lista vamos a pasar empezar el proceso de cambiar de usuario 
+	    for(int i = 0; i < users.size() && b == false ; i++)    	
 	    	if(username.getText().equals(users.get(i))) {    		
 	    		us = users.get(i);
+	    		ps = password.getText();
 	    		b = true;
-	    	}
-	    }
+	    	}	    
 	    
 	    if(!b) {
-	    	us = original;
+	    	us = origusu;
+	    	ps = origps;
 	    	JOptionPane.showMessageDialog(null,"El usuario o la contraseña son incorrectos","Atención",JOptionPane.ERROR_MESSAGE);
 	    }	    	
 	    else {
-	    	String ps = getZip(1);
+	    	String pass = "";
+	    	
+	    	// Comprobamos si las contraseñas coinciden
+	    	try {
+	    		pass = getString("pass.txt");
+	    	}
+	    	catch (Exception e){
+	    		us = origusu;
+		    	ps = origps;
+		    	JOptionPane.showMessageDialog(null,"El usuario o la contraseña son incorrectos","Atención",JOptionPane.ERROR_MESSAGE);
+	    	}    	
 	    	
 	    	if(password.getText().isBlank()) {
-	    		us = original;
+	    		us = origusu;
+	    		ps = origps;
 	    		JOptionPane.showMessageDialog(null,"El usuario o la contraseña son incorrectos","Atención",JOptionPane.ERROR_MESSAGE);
 	    	}	    	
-	    	else if(ps.equals(getSecurePassword(password.getText(), getSalt(2))))     		
+	    	else if(pass.equals(getSecurePassword(ps, getSalt(2))))     		
 	    		dev = true; 	    	
 	    	else {
-	    		us = original;
+	    		us = origusu;
+	    		ps = origps;
 	    		JOptionPane.showMessageDialog(null,"El usuario o la contraseña son incorrectos","Atención",JOptionPane.ERROR_MESSAGE);	    	
 	    	}
 	    }
@@ -549,51 +589,51 @@ public class EncryptDecrypt extends JFrame {
 	}
 	
 	public static ArrayList<String> getUsers() throws IOException{
-		ArrayList<String> dev = new ArrayList<String>();
-		crearAdmin();	 	
-		String s = getString("users.txt");        
-        String[] spl = s.split("\n");
-        
-        for(int i = 0; i < spl.length; i++) 
-        	dev.add(spl[i]);
+		ArrayList<String> dev = new ArrayList<String>();		
+		
+		// Comprobamos que exista la carpeta admin
+		crearAdmin();
+		
+		// Recuperamos la lista de usuarios existentes en la base de datos
+		if(us.equals("admin")) {
+			String s = getString("users.txt");        
+	        String[] spl = s.split("\n");
+	        
+	        // Añadimos al arraylist
+	        for(int i = 0; i < spl.length; i++) 
+	        	dev.add(spl[i]);
+		}
+		else {
+			// Revisamos los nombres de las carpetas
+			File f = new File("Usuarios");
+			String[] ss = f.list();
+			
+			for (String s: ss) 
+				dev.add(s);
+							
+		}
         
 		return dev;
 	}
 	
-	public static String getZip(int i) throws Exception {
-
-		String dev="";		
-		String a ="";
-		
-        switch(i) {
-        	case 1:
-        		a = "pass.txt";        		
-        	break;
-        	case 2:
-        		a = "rsa_pub.txt";        		
-        	break;
-        	case 3:
-        		a = "rsa_pvt.txt"; 
-        	break;
-        	case 4:
-        		a = "sal.txt";
-        	break;
-        }
-        
-     // Extraemos el contendio del archivo
-        dev = getString(a);
-        
-		return dev;		
-	}
-	
 	public static String getSecurePassword(String password, byte[] salt) {
-
+		
         String generatedPassword = null;
+        
+        // Se genera la contraseña encriptada con hash
         try {
+        	
+        	// Se selecciona el tipo del algoritmo "SHA-256"
             MessageDigest md = MessageDigest.getInstance("SHA-256");
+            
+            //Añadimos la sal pasada por parámetro a la hash
             md.update(salt);
+            
+            // Pasamos la contraseña a bytes
             byte[] bytes = md.digest(password.getBytes());
             StringBuilder sb = new StringBuilder();
+            
+            // Creamos un string con los bytes del hash creado
             for (int i = 0; i < bytes.length; i++) {
                 sb.append(Integer.toString((bytes[i] & 0xff) + 0x100, 16).substring(1));
             }
@@ -604,27 +644,38 @@ public class EncryptDecrypt extends JFrame {
         return generatedPassword;
     }
 
-private static byte[] getSalt(int i) throws Exception {
+	private static byte[] getSalt(int i) throws Exception {
 	    
+		// Hay 2 tipos de casos, uno para crear una nueva sal y otro para pillarla de un archivo
     	byte[] salt = null;
     	switch(i) {
     		case 1:
+    			// Creamos una nueva sal con un algoritmo para randomizar los bytes
 	    		SecureRandom random = new SecureRandom();
 		        salt = new byte[16];
-		        random.nextBytes(salt);
-		        System.out.println(salt);    
+		        random.nextBytes(salt);    
 		    break;
     		case 2:
-    			String s = getZip(4);
-    			salt = s.getBytes();
-    			System.out.println(salt);
+    			// Pillamos el contenido del archivo sal.txt del usuario actual y lo pasamos a bytes
+    			salt = getString("sal.txt").getBytes();
     		break;
     	}
 	        return salt;
     }	
 	
+	public static ZipParameters getParameters() {
+		
+		// Creamos unos parámetros de seguridad para encriptar archivos dentro del zip con algoritmo AES
+		ZipParameters zipParameters = new ZipParameters();
+		zipParameters.setEncryptFiles(true);
+		zipParameters.setEncryptionMethod(EncryptionMethod.AES);
+        
+		return zipParameters;
+	}
+	
 	public static byte[] getFile(File f) {
-
+		
+		// Pillamos los bytes del archivo que queremos encriptar y los pasamos a un array de bytes
         InputStream is = null;
         try {
             is = new FileInputStream(f);
@@ -647,6 +698,8 @@ private static byte[] getSalt(int i) throws Exception {
     }
 	
 	public static byte[] encryptFile(Key key, byte[] content) {
+		
+		// Ciframos los archivos utilizando una clave en algoritmo AES
         Cipher cipher = null;
         byte[] encrypted = null;
         try {
@@ -664,10 +717,10 @@ private static byte[] getSalt(int i) throws Exception {
 	
 	public static String encryptAES(Key key, RSA rsa) {
 		
+		// Ciframos la clave AES con la clave pública RSA del usuario
 		Cipher cipher = null;		
 		String encryptedAES = "";
-		try {
-	        
+		try {	        
 	        cipher=Cipher.getInstance("RSA/ECB/PKCS1Padding");
 	        cipher.init(Cipher.ENCRYPT_MODE, rsa.PublicKey);
 	        
@@ -682,10 +735,11 @@ private static byte[] getSalt(int i) throws Exception {
 	}
 	
 	public static byte[] decryptFile(Key key, byte[] textCryp) {
+		
+		// Desencriptamos el archivo seleccionado con la clave AES con la que se encriptó el archivo
         Cipher cipher;
         byte[] decrypted = null;
-        try {
-        	
+        try {        	
             cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
             cipher.init(Cipher.DECRYPT_MODE, key);
             decrypted = cipher.doFinal(textCryp);
@@ -698,14 +752,14 @@ private static byte[] getSalt(int i) throws Exception {
     }
 	
 	public static SecretKey decryptAES(PrivateKey pvt, String key) {
+		
+		// Desencriptamos la clave AES del archivo seleccionado con la clave privada del usuario
 		Cipher cipher = null;		
 		SecretKey decryptedAES = null;
-		try {
-	        
+		try {	        
 	        cipher=Cipher.getInstance("RSA");
 	        cipher.init(Cipher.DECRYPT_MODE, pvt);
 	        
-	       
 	        byte[] decodedKey = Base64.getDecoder().decode(key);
 	        decryptedAES = new SecretKeySpec(cipher.doFinal(decodedKey), "AES");
 			
@@ -718,32 +772,35 @@ private static byte[] getSalt(int i) throws Exception {
 	
 	public static void saveFile(byte[] bytes, String file, String folder) throws IOException {
 		
-        FileOutputStream fos = new FileOutputStream(folder +file);
+		// Guardamos los archivos en una carpeta
+        FileOutputStream fos = new FileOutputStream(folder + file);
         fos.write(bytes);
         fos.close();
 
     }
 	
-	public static void Encriptar(File[] archivos)
-		    throws InvalidKeySpecException, Exception{
-			
+	public static boolean Encriptar(File[] archivos) throws InvalidKeySpecException, Exception{
+		boolean dev = false;
+		
 	    //Creamos el archivo donde se guardaran las claves
 		RSA rsa = new RSA();
 		String padre = archivos[0].getParent();
 		File clavesAes = null;
-	    try{
-	    	new File(padre+"/Claves"+us).mkdirs();
-	    	File f = new File(padre+"/Claves"+us);
-	    	Path file = Paths.get(f.getPath());
-		 	Files.setAttribute(file, "dos:hidden", true);
-	    	clavesAes = new File(padre+"/Claves"+us,"aes.txt");
-	    	FileWriter myWriteraes = new FileWriter(clavesAes);
+	    try{	    	
+	    	// Accedemos al zip del admin para añadir las claves aes
+			ZipFile zAdmin = new ZipFile("Usuarios/"+us+"/compressed"+us+".zip", ps.toCharArray());						
+			
+			// Pillamos las claves aes
+			String aes = getString("aes.txt");
+	        
+			clavesAes = new File("Usuarios/"+us,"aes.txt");
+			FileWriter waes = new FileWriter(clavesAes);	    	
+	    	waes.write(aes);
 	    	
 	    	// Pillamos la clave pública del zip
-	    	rsa.setPublicKeyString(getZip(2));	    	
+	    	rsa.setPublicKeyString(getString("rsa_pub.txt"));	    	
 	    	
-	        try {
-	        	
+	        try {	        	
 	            for(int i=0; i < archivos.length; i++) {
 	
 	                //Generamos clave aleatoria
@@ -751,7 +808,8 @@ private static byte[] getSalt(int i) throws Exception {
 	                keyGen.init(256); 
 	                SecretKey key = keyGen.generateKey();
 	                String id = archivos[i].getName();
-	                                
+	                
+	                // Pillamos los bytes del archivo actual
 	                byte[] content = getFile(archivos[i]);	
 	                byte[] encrypted = encryptFile(key, content);
 	
@@ -765,101 +823,113 @@ private static byte[] getSalt(int i) throws Exception {
 	                System.out.println("Con RSA " +encodedKey);
 	                System.out.println("Original " + key);
 	
-	                myWriteraes.write(encodedKey+" "+ id +"\n");
-	                
+	                waes.write(encodedKey+" "+ id +"\n");	                
 	            }
-	            myWriteraes.close();
 	            
-	        } catch (FileNotFoundException e) {
-	        	funcionaen = false;
+	            waes.close();
+	            
+	            // Añadimos las claves AES a las bases de datos 
+	            // y borramos el archivo de texto para que solo se pueda acceder desde el zip
+	            zAdmin.addFile(clavesAes);
+	            zAdmin.close();  
+	            clavesAes.delete();
+	            dev = true;
+	            
+	        } catch (Exception e) {
 	            e.printStackTrace();
 	            clavesAes.delete();
-	            new File(padre+"/Claves"+us).delete();
 	        }
 	    } catch (IOException e) {
-	    	funcionaen = false;
-	        System.out.println("An error occurred.");
+	    	JOptionPane.showMessageDialog(null,"Ha ocurrido un error","Atención",JOptionPane.ERROR_MESSAGE);
 	        e.printStackTrace();
 	        clavesAes.delete();
-	        new File(padre+"/Claves"+us).delete();
 	    }
+	    
+	    return dev;
 	}
 	
-	public static void Desencriptar(File[] archivos)
-		    throws Exception{
-		              
-            	String padre = archivos[0].getParent();
-            	File f = new File(padre);
-            	String abuelo = f.getParent();
-            	System.out.println(abuelo);
-            	File saber = new File(abuelo+"/Desencriptadas");
-            	String[] parts;
-             	String llave = ""; 
-             	String id = ""; 
-             	
-            	 try {
-                     //Leemos las rutas de las claves del archivo clavesAes.txt
-                     Scanner scanneraes = new Scanner(new File(abuelo+"\\Claves"+us+"\\aes.txt"));
-                     
-                     RSA rsa = new RSA();
-                     
-                     rsa.setPrivateKeyString(getZip(3));
-                     
-                     ArrayList<SecretKey> claves = new ArrayList<SecretKey>();	
-                     ArrayList<String> ids = new ArrayList<String>();
-                     while (scanneraes.hasNextLine()) {                
+	public static boolean Desencriptar(File[] archivos) throws Exception{
+		boolean dev = false;
 		
-                        //Leemos la clave del fichero y la decodificamos
-                        String linea = scanneraes.nextLine();
-                        System.out.println("linea " + linea);
-                        parts = linea.split(" ");
-                        llave=parts[0];
-                        id=parts[1];
-                        
-                        System.out.println("El string: " + rsa.PrivateKey.toString());
-                        
-                        SecretKey key = decryptAES(rsa.PrivateKey, llave);
-                        claves.add(key);
-                        ids.add(id);
-                        System.out.println("Descifro " + key);
-                     }
-		                        
-                        for (File file : archivos) {
-		                    
-		                    if (file.isFile()) {
-		                    	
-		                        byte[] content = getFile(file);
-		                        
-		                        //Desencriptamos
-		                        for(int i = 0;i < claves.size() && ids.get(i)!=file.getName(); i++) {
-		                        	
-		                        	if(ids.get(i).equals(file.getName())) {
-		                        		System.out.println(file.getName());
-		                        		byte[] decrypted = decryptFile(claves.get(i), content);
-		                        		
-		                        		if(!saber.exists()) 
-		                        			new File(abuelo+"/Desencriptadas"+us).mkdirs();		                        		
-		                        		
-			                        	saveFile(decrypted,file.getName(),abuelo+"/Desencriptadas"+us+"/");
-		                        	}
-		                        }                 
-		                    }
-		                }
+    	String padre = archivos[0].getParent();
+    	File f = new File(padre);
+    	String abuelo = f.getParent();
+    	File saber = new File(abuelo+"/Desencriptadas"+us);
+    	String[] parts;
+     	String llave = ""; 
+     	String id = ""; 
+     	
+    	try { 			
+ 			// Pillamos las claves aes
+ 			String aes = getString("aes.txt");
+ 	        
+ 			File clavesAes = new File("Usuarios/"+us,"aes.txt");
+ 			FileWriter waes = new FileWriter(clavesAes);
+ 			waes.write(aes);
+ 			waes.close();
+ 			
+            //Leemos las rutas de las claves del archivo clavesAes.txt
+            Scanner scannerAes = new Scanner(clavesAes);	                 
+            RSA rsa = new RSA();
+             
+            rsa.setPrivateKeyString(getString("rsa_pvt.txt"));
+             
+            ArrayList<SecretKey> claves = new ArrayList<SecretKey>();	
+            ArrayList<String> ids = new ArrayList<String>();
+            while (scannerAes.hasNextLine()) {
+            	
+                //Leemos la clave del fichero y la decodificamos
+                String linea = scannerAes.nextLine();
+                parts = linea.split(" ");
+                llave=parts[0];
+                id=parts[1];
+                
+                System.out.println("El string: " + rsa.PrivateKey.toString());
+                
+                SecretKey key = decryptAES(rsa.PrivateKey, llave);
+                claves.add(key);
+                ids.add(id);
+            }
+            scannerAes.close();
+            clavesAes.delete();
+
+            for (File file : archivos) {
+                
+                if (file.isFile()) {
+                	
+                    byte[] content = getFile(file);
                     
-	        } catch (FileNotFoundException e) {
-	        	funcionadec = false;
-	        	JOptionPane.showMessageDialog(null,"No se han podido encontrar las claves para desencriptar los archivos","Atención",JOptionPane.ERROR_MESSAGE);
-	        	System.out.println(e);
-	        }
-	}
-	
+                    //Desencriptamos
+                    for(int i = 0; i < claves.size() && ids.get(i) != file.getName(); i++) {
+                    	
+                    	if(ids.get(i).equals(file.getName())) {
+                    		
+                    		byte[] decrypted = decryptFile(claves.get(i), content);                       		
+                    		
+                    		if(decrypted != null) {
+                    			if(!saber.exists())
+                        			saber.mkdir();
+                    			dev = true;
+                        		saveFile(decrypted,file.getName(),abuelo+"/Desencriptadas"+us+"/");
+                    		}
+                    	}                    		
+                    }                    
+                }
+            }           
+    	} catch (FileNotFoundException e) {
+        	JOptionPane.showMessageDialog(null,"No se han podido encontrar las claves para desencriptar los archivos","Atención",JOptionPane.ERROR_MESSAGE);
+        	e.printStackTrace();
+        }
+    	
+    	return dev;
+	}	
 
 	/**
-	 * Create the frame.
-	 * @throws IOException 
-	 */
+	 * Create the frame. 
+	 **/
 	public EncryptDecrypt() throws IOException {	
-	    	
+	    
+		// Se crea el frame de la aplicación
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setBounds(100, 100, 606, 369);
 		contentPane = new JPanel();
@@ -867,14 +937,18 @@ private static byte[] getSalt(int i) throws Exception {
 		setContentPane(contentPane);
 		contentPane.setLayout(null);
 		
+		// Declaramos los botones de elegir archivos para encriptar y desencriptar
 		JButton btnEncrypt = new JButton("Elegir archivos");
 		btnEncrypt.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				
+				// Creamos el selector de archivos
 				JFileChooser chooser = new JFileChooser();
 				chooser.setDialogTitle("Selecciona los archivos a encriptar");
 				chooser.setMultiSelectionEnabled(true);
 				chooser.showOpenDialog(null);
+				
+				// Almacenamos los archivos seleccionados
 				File[] files = chooser.getSelectedFiles();
 				String mensaje="";
 				String mensaje2="";
@@ -885,8 +959,8 @@ private static byte[] getSalt(int i) throws Exception {
 					s = files[0].getParent()+"\\Encriptadas"+us;
 					
 					try {
-						Encriptar(files);
-						if(funcionaen) {
+						// Encriptamos
+						if(Encriptar(files)) {
 							
 							if(n==1) {
 								mensaje="El archivo que has seleccionado ha sido encriptado y guardado en la carpeta \n";
@@ -900,6 +974,9 @@ private static byte[] getSalt(int i) throws Exception {
 							label.setHorizontalAlignment(SwingConstants.CENTER);
 							JOptionPane.showMessageDialog(null, label, mensaje2, JOptionPane.DEFAULT_OPTION);
 						}
+						else 
+							JOptionPane.showMessageDialog(null,"No se han podido encontrar las claves para encriptar los archivos","Atención",JOptionPane.ERROR_MESSAGE);
+						
 					} catch (Exception e1) {
 						
 						e1.printStackTrace();
@@ -909,6 +986,7 @@ private static byte[] getSalt(int i) throws Exception {
 			}
 		});
 		
+		// Botón para desencriptar
 		JButton btnDecrypt = new JButton("Elegir archivos");
 		btnDecrypt.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -920,141 +998,116 @@ private static byte[] getSalt(int i) throws Exception {
 				File[] files = chooser.getSelectedFiles();
 				
 				int n = files.length;
-				String s = files[0].getParent();
-				File f = new File(s);
-				String s2 = f.getParent()+"\\Desencriptadas"+us;
-				String mensaje="";
-				String mensaje2="";
 				
-				try {
-					Desencriptar(files);
-					if(funcionadec) {
-						
-						if(n==1) {
-							mensaje="El archivo que has seleccionado ha sido desencriptado y guardado en la carpeta \n";
-							mensaje2="Archivo Desencriptado";
+				if(n != 0) {
+					String s = files[0].getParent();
+					File f = new File(s);
+					String s2 = f.getParent()+"\\Desencriptadas"+us;
+					String mensaje="";
+					String mensaje2="";
+				
+					try {
+						// Desencriptamos
+						if(Desencriptar(files)) {
+							
+							if(n==1) {
+								mensaje="El archivo que has seleccionado ha sido desencriptado y guardado en la carpeta \n";
+								mensaje2="Archivo Desencriptado";
+							}
+							else {
+								mensaje="<html><center>Los "+n+" archivos que has seleccionado han sido desencriptados y guardados en la carpeta \n";
+								mensaje2="Archivos Desencriptados";
+							}
+							JLabel label = new JLabel("<html><center>"+mensaje+"<br>"+s2);
+							label.setHorizontalAlignment(SwingConstants.CENTER);
+							JOptionPane.showMessageDialog(null, label, mensaje2, JOptionPane.DEFAULT_OPTION);
 						}
-						else {
-							mensaje="<html><center>Los "+n+" archivos que has seleccionado han sido desencriptados y guardados en la carpeta \n";
-							mensaje2="Archivos Desencriptados";
-						}
-						JLabel label = new JLabel("<html><center>"+mensaje+"<br>"+s2);
-						label.setHorizontalAlignment(SwingConstants.CENTER);
-						JOptionPane.showMessageDialog(null, label, mensaje2, JOptionPane.DEFAULT_OPTION);
+						else
+							JOptionPane.showMessageDialog(null,"No se han podido encontrar las claves para desencriptar los archivos","Atención",JOptionPane.ERROR_MESSAGE);
+					} catch (Exception e1) {
+						e1.printStackTrace();
 					}
-				} catch (Exception e1) {
-					e1.printStackTrace();
 				}
 			}
 		});
 		
+		// Añadimos con el usuario actual
 		JLabel lblNewLabel = new JLabel("Usuario actual: " + us);
-		lblNewLabel.setText("Usuario actual: " + us);
 		lblNewLabel.setFont(new Font("Tw Cen MT", Font.BOLD, 13));
 		lblNewLabel.setForeground(Color.WHITE);
 		lblNewLabel.setBounds(4, 317, 131, 13);
 		contentPane.add(lblNewLabel);
 		
+		// Añadimos los botones de encriptado y desencriptado
 		btnEncrypt.setBounds(255, 139, 81, 27);
 		contentPane.add(btnEncrypt);
 		btnDecrypt.setBounds(255, 243, 81, 27);
 		contentPane.add(btnDecrypt);
-	
+		
+		// Etiqueta con el título de la aplicación
 		JLabel lblTitulo = new JLabel("Encripta y Desencripta");
 		lblTitulo.setFont(new Font("Tw Cen MT", Font.BOLD, 30));
 		lblTitulo.setForeground(Color.WHITE);
 		lblTitulo.setBounds(20, 20, 294, 50);
 		contentPane.add(lblTitulo);
 		
+		// Etiqueta sobre el botón de encriptar
 		JLabel lblEligeLosArchivos = new JLabel("Escoge los archivos que quieres encriptar");
 		lblEligeLosArchivos.setForeground(Color.WHITE);
 		lblEligeLosArchivos.setFont(new Font("Tw Cen MT", Font.BOLD, 16));
 		lblEligeLosArchivos.setBounds(157, 99, 278, 39);
 		contentPane.add(lblEligeLosArchivos);
 		
+		// Etiqueta sobre el botón de desencriptar
 		JLabel lblEscogeLosArchivos = new JLabel("Escoge los archivos que quieres desencriptar");
 		lblEscogeLosArchivos.setForeground(Color.WHITE);
 		lblEscogeLosArchivos.setFont(new Font("Tw Cen MT", Font.BOLD, 16));
 		lblEscogeLosArchivos.setBounds(145, 203, 302, 39);
 		contentPane.add(lblEscogeLosArchivos);
 		
+		// Barra de menú
 		JMenuBar menuBar = new JMenuBar();
 		menuBar.setBounds(0, 0, 619, 22);
 		contentPane.add(menuBar);
 		
+		// Objeto en la barra de menú
 		JMenu mnNewMenu = new JMenu("Opciones");
 		menuBar.add(mnNewMenu);
 		
+		// Lista de usuarios y declaramos objetos que pondremos en la lista de opciones del menú 
 		ArrayList<String> users = getUsers();
 		JMenuItem mntmNewMenuItemNUsu = new JMenuItem("Nuevo Usuario");
 		JMenuItem mntmNewMenuItemSalir = new JMenuItem("Salir");
 		JMenuItem mntmNewMenuItemCambio = new JMenuItem("Cambiar Usuario");
 		JMenuItem delete = new JMenuItem("Eliminar Usuario");
 		
-		
-		mntmNewMenuItemCambio.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {					
+		// Declaramos el botón de nuevo usuario
+		mntmNewMenuItemNUsu.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
 				try {
-					Boolean b = cambiarUsuario();
 					
-					if(b) {	
-						lblNewLabel.setText("Usuario actual: " + us);						
-			    		JOptionPane.showMessageDialog(null, "Se ha cambiado de usuario satisfactoriamente", "Cambiar Usuario", JOptionPane.DEFAULT_OPTION);	
-			    		
-			    		if(!us.equals("admin") && mnNewMenu.getComponentZOrder(mntmNewMenuItemNUsu) != -1)
-			    			mnNewMenu.remove(mntmNewMenuItemNUsu);
-			    		else if (us.equals("admin"))
-			    			mnNewMenu.add(mntmNewMenuItemNUsu);
-			    		
-			    		if(!us.equals("admin") && mnNewMenu.getComponentZOrder(delete) != -1)
-			    			mnNewMenu.remove(delete);
-			    		else if (us.equals("admin"))
-			    			mnNewMenu.add(delete);
-			    		
-			    		mnNewMenu.remove(mntmNewMenuItemSalir);
-			    		mnNewMenu.add(mntmNewMenuItemSalir);
-			    		menuBar.updateUI();
-		    			mnNewMenu.updateUI();
-					}
+					// Hacemos el proceso y cambiamos los botones de lado
+		    		if(newUsuario()) {		    			
+		    			lblNewLabel.setText("Usuario actual: " + us);
+		    			
+		    			if(mnNewMenu.getComponentZOrder(mntmNewMenuItemCambio) == -1) {
+		    				mnNewMenu.remove(delete);
+		    				mnNewMenu.remove(mntmNewMenuItemNUsu);
+				    		mnNewMenu.add(mntmNewMenuItemCambio);
+		    				mnNewMenu.remove(mntmNewMenuItemSalir);
+				    		mnNewMenu.add(mntmNewMenuItemSalir);
+			    			menuBar.updateUI();
+			    			mnNewMenu.updateUI();
+		    			}
+		    			JOptionPane.showMessageDialog(null, "¡Nuevo usuario creado!", "Nuevo Usuario", JOptionPane.DEFAULT_OPTION);			    		
+		    		}
 				} catch (Exception e1) {
-					// TODO Auto-generated catch block
 					e1.printStackTrace();
-				}
+				}						
 			}
-		});	
+		});
 		
-		if(users.size()>1)
-			mnNewMenu.add(mntmNewMenuItemCambio);	
-			
-		if(us.equals("admin")) {
-
-			mntmNewMenuItemNUsu.addActionListener(new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
-					try {
-						Boolean b = newUsuario();
-			    		if(b) {		    			
-			    			lblNewLabel.setText("Usuario actual: " + us);
-			    			
-			    			if(mnNewMenu.getComponentZOrder(mntmNewMenuItemCambio) == -1) {
-			    				mnNewMenu.remove(delete);
-			    				mnNewMenu.remove(mntmNewMenuItemNUsu);
-					    		mnNewMenu.add(mntmNewMenuItemCambio);
-			    				mnNewMenu.remove(mntmNewMenuItemSalir);
-					    		mnNewMenu.add(mntmNewMenuItemSalir);
-				    			menuBar.updateUI();
-				    			mnNewMenu.updateUI();
-			    			}
-			    			JOptionPane.showMessageDialog(null, "¡Nuevo usuario creado!", "Nuevo Usuario", JOptionPane.DEFAULT_OPTION);			    		
-			    		}
-					} catch (Exception e1) {
-						e1.printStackTrace();
-					}						
-				}
-			});
-			
-			mnNewMenu.add(mntmNewMenuItemNUsu);	
-		}	
-		
+		// Declaramos el botón de eliminar usuario
 		delete.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				try {
@@ -1066,8 +1119,50 @@ private static byte[] getSalt(int i) throws Exception {
 				}
 			}
 		});
-		mnNewMenu.add(delete);
 		
+		// Declaramos botón de cambiar usuario
+		mntmNewMenuItemCambio.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {					
+				try {
+					
+					// Cambiamos botones de lado y hacemos el cambio
+					if(cambiarUsuario()) {	
+						lblNewLabel.setText("Usuario actual: " + us);						
+			    		JOptionPane.showMessageDialog(null, "Se ha cambiado de usuario satisfactoriamente", "Cambiar Usuario", JOptionPane.DEFAULT_OPTION);	
+			    		System.out.println(mnNewMenu.getComponent());
+			    		if(!us.equals("admin") && mnNewMenu.getComponentCount() != 2)
+			    			mnNewMenu.remove(mntmNewMenuItemNUsu);
+			    		else if (us.equals("admin"))
+			    			mnNewMenu.add(mntmNewMenuItemNUsu);
+			    		
+			    		if(!us.equals("admin") && mnNewMenu.getComponentCount() != 2)
+			    			mnNewMenu.remove(delete);
+			    		else if (us.equals("admin"))
+			    			mnNewMenu.add(delete);
+			    		
+			    		mnNewMenu.remove(mntmNewMenuItemSalir);
+			    		mnNewMenu.add(mntmNewMenuItemSalir);
+			    		menuBar.updateUI();
+		    			mnNewMenu.updateUI();
+					}
+				} catch (Exception e1) {
+					// TODO Auto-generated catch block
+					System.out.println(us+" "+ps);
+					e1.printStackTrace();
+				}
+			}
+		});	
+		
+		// Añadimos los botones a la barra
+		if(users.size()>1)
+			mnNewMenu.add(mntmNewMenuItemCambio);	
+		
+		if(us.equals("admin")) {				
+			mnNewMenu.add(mntmNewMenuItemNUsu);			
+			mnNewMenu.add(delete);
+		}	
+		
+		// Declaramos y añadimos el botón de salir
 		mntmNewMenuItemSalir.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				System.exit(0);
@@ -1075,6 +1170,7 @@ private static byte[] getSalt(int i) throws Exception {
 		});
 		mnNewMenu.add(mntmNewMenuItemSalir);		
 		
+		// Gif de fondo
 		JLabel lblFondo = new JLabel("New label");
 		URL url = EncryptDecrypt.class.getResource("/matrix.gif");
 		lblFondo.setIcon(new ImageIcon(url));
