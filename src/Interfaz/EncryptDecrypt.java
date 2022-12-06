@@ -340,14 +340,12 @@ public class EncryptDecrypt extends JFrame {
     	
     	// Creamos un entero donde vamos a revisar el número de bytes del archivo que vamos a extraer
     	int readLen;
-		
-    	// Si el archivo que queremos extraer es uno de los listados abajo y el usuario actual es el admin se van a extraer desde el zip del bin
+
 		if(us.equals("admin") && (s.equals("rsa_pub.txt") || s.equals("rsa_pvt.txt") || s.equals("pass.txt") || s.equals("sal.txt"))) {
 			
-			// Creamos un stream donde vamos a tener los datos del zip del bin
+			// Creamos un InputStream donde vamos a tener los datos del zip del bin
+			// y creamos un ZipInputStream donde vamos a guardar el contenido del zip
 			InputStream is = EncryptDecrypt.class.getClassLoader().getResourceAsStream("compressedadmin.zip");
-			
-			// Creamos un stream donde tendremos acceso a los datos del zip en stream
 			try(ZipInputStream z = new ZipInputStream(is, ps.toCharArray())) {
 				LocalFileHeader localFileHeader;
 		        
@@ -363,7 +361,7 @@ public class EncryptDecrypt extends JFrame {
 			            		outputStream.write(readBuffer, 0, readLen);
 			            	
 			            	dev = baos.toString();
-			            	System.out.println("Lo que se devuelve getString(): " + dev);
+			            	System.out.println("getString("+s+"): " + dev);
 			            	bool = true;
 			            }
 		        	}
@@ -390,7 +388,7 @@ public class EncryptDecrypt extends JFrame {
 			while ((readLen = inputStream.read(readBuffer)) != -1) {
 			  baos.write(readBuffer, 0, readLen);
 			}
-			System.out.println("Lo que devuelve el getString(): " + new String(baos.toByteArray()));
+			System.out.println("getString("+s+"): " + new String(baos.toByteArray()));
 			zipFile.close();
 			dev = new String(baos.toByteArray());
 			
@@ -414,6 +412,8 @@ public class EncryptDecrypt extends JFrame {
 	    label.add(new JLabel("Repetir Contraseña", SwingConstants.LEFT));
 	    panel.add(label, BorderLayout.WEST);
 	    
+	    // Inputs del nombre de usuario, contraseña y repetir contraseña
+	    // no hay limitaciones (igual se pone alguna)
 	    JPanel controls = new JPanel(new GridLayout(0, 1, 2, 2));
 	    JTextField username = new JTextField();
 	    controls.add(username);
