@@ -55,6 +55,7 @@ import net.lingala.zip4j.model.FileHeader;
 import net.lingala.zip4j.model.LocalFileHeader;
 import net.lingala.zip4j.model.ZipParameters;
 import net.lingala.zip4j.model.enums.EncryptionMethod;
+
 import java.io.*;
 
 public class EncryptDecrypt extends JFrame {
@@ -155,18 +156,21 @@ public class EncryptDecrypt extends JFrame {
 			File archivoUsu = new File("users.txt");
 			File archivoClv = new File("passes.txt");
 			File archivoAes = new File("aes.txt");
+			File archivoCar = new File("carpetas.txt");
 			
 			FileWriter Wusus = new FileWriter(archivoUsu);
 			FileWriter Wclvs = new FileWriter(archivoClv);
 			FileWriter Waes = new FileWriter(archivoAes);
+			FileWriter Wcaps = new FileWriter(archivoCar);
 			
 			// Inicializamos los archivos
 	        Wusus.write("admin\n");	
 	        Wusus.close();
 	        Wclvs.close();
 	        Waes.close();
+	        Wcaps.close();
 	        
-	        List<File> filesToAdd = Arrays.asList(archivoUsu, archivoClv, archivoAes);	        
+	        List<File> filesToAdd = Arrays.asList(archivoUsu, archivoClv, archivoAes, archivoCar);	        
 
 			// Añadimos los archivos y después los borramos
 	        zAdmin.addFiles(filesToAdd, getParameters());	        
@@ -175,6 +179,7 @@ public class EncryptDecrypt extends JFrame {
 	        archivoUsu.delete();
 	        archivoClv.delete();
 	        archivoAes.delete();
+	        archivoCar.delete();
 		}						
 	}
 	
@@ -259,12 +264,50 @@ public class EncryptDecrypt extends JFrame {
 	    	}
 	    	else if(pass.equals(getSecurePassword(ps, getSalt(2))))  {   
 	    		
+	    		// Borramos las carpetas de archivos encriptados del usuario
+	    		// Pillamos las contraseñas para usarlas en el getString y recoger las carpetas del usuario
+	    		String p = getString("passes.txt");
+	    		
+		        String[] contraSplit = p.split(" ");
+		        String contUsu = "";
+		        for (int i = 0; i < contraSplit.length; i++) 
+		        	if(contraSplit[i].equals(username.getText())) 
+		        		contUsu = contraSplit[i-1];		        	
+		        		// Recogemos la contraseña que queremos
+		        
+		        // Guardamos los datos del admin para hacer el getString con la información del usuario a borrar
+		        String origUs = us;
+		        String origPs = ps;
+		        
+		        us = username.getText();
+		        ps = contUsu;
+		        
+		        // Pillamos las direcciones de las carpetas de los archivos
+		        String c = getString("carpetas.txt");
+		        String[] carpetas = c.split("\n");
+		        
+		        // Borramos los archivos y luego la carpeta que los contenía
+		        for (String direc : carpetas) {
+		        	File efe = new File(direc);
+		        	String[] archivos = efe.list();
+		        	
+		        	for (String archivo : archivos) 
+		        		// Borramos el archivo actual
+		        		new File(efe.getAbsolutePath()+"/"+archivo).delete();
+		        	
+		        	// Borramos la carpeta actual
+		        	efe.delete();		        	
+		        }
+		        
+		        // Devolvemos los datos del usuario actual (admin) a como estaban
+		        us = origUs;
+		        ps = origPs;
+	    		
 	    		// Accedemos al zip del admin
 	    		ZipFile zAdmin = new ZipFile("Usuarios/admin/compressedadmin.zip", ps.toCharArray());						
 	    		
 	    		// Pillamos las listas de usuarios y contraseñas
 	    		String u = getString("users.txt");
-	    		String p = getString("passes.txt");
 	    		
 	    		// Creamos los archivos en los que vamos a actualizar los datos de los usuarios
 				File archivoUsu = new File("Usuarios/admin/users.txt");
@@ -303,7 +346,7 @@ public class EncryptDecrypt extends JFrame {
 		        zAdmin.addFile(archivoUsu);
 		        zAdmin.addFile(archivoClv, getParameters());        
 		        zAdmin.close();
-				
+		        
 		        // Borramos la carpeta del usuario borrado
 		        File f = new File("Usuarios/"+username.getText()+"/compressed"+username.getText()+".zip");
 		        File f2 = new File("Usuarios/"+username.getText());
@@ -413,7 +456,7 @@ public class EncryptDecrypt extends JFrame {
 	    panel.add(label, BorderLayout.WEST);
 	    
 	    // Inputs del nombre de usuario, contraseña y repetir contraseña
-	    // no hay limitaciones (igual se pone alguna)
+	    // la contraseña debe tener al menos 6 carácteres
 	    JPanel controls = new JPanel(new GridLayout(0, 1, 2, 2));
 	    JTextField username = new JTextField();
 	    controls.add(username);
@@ -439,7 +482,9 @@ public class EncryptDecrypt extends JFrame {
 	    String reppass = repPass.getText();
 	    
 	    if(pass.isBlank() || usu.isBlank()) 
-	    	JOptionPane.showMessageDialog(null, "Ni el usuario ni la contraseña pueden estar en blanco", "Atención", JOptionPane.ERROR_MESSAGE);	        
+	    	JOptionPane.showMessageDialog(null, "Ni el usuario ni la contraseña pueden estar en blanco", "Atención", JOptionPane.ERROR_MESSAGE);
+	    else if (password.getText().length() < 6)
+	    	JOptionPane.showMessageDialog(null,"La contraseña debe tener al menos 6 caracteres","Atención",JOptionPane.ERROR_MESSAGE);
 	    else if(!b && pass.equals(reppass)) {
 	    	
 	    	// Creamos la nueva carpeta del usuario, sus claves tanto la pública y la privada 
@@ -459,12 +504,14 @@ public class EncryptDecrypt extends JFrame {
 	    	File clavePub = new File("Usuarios/"+usu+"/rsa_pub.txt");
 	    	File clavePvt = new File("Usuarios/"+usu+"/rsa_pvt.txt");
 	    	File aes = new File("Usuarios/"+usu+"/aes.txt");
+	    	File carps = new File("Usuarios/"+usu+"/carpetas.txt");
 	    	
 	    	FileWriter salt = new FileWriter(sal);
 	    	FileWriter wclv = new FileWriter(clave);
 	    	FileWriter wpub = new FileWriter(clavePub);
 	    	FileWriter wpvt = new FileWriter(clavePvt);
 	    	FileWriter waes = new FileWriter(aes);
+	    	FileWriter wcps = new FileWriter(carps);
 	    	
 	    	// Escribimos los datos en los nuevos archivos
 	    	salt.write(s);
@@ -477,6 +524,7 @@ public class EncryptDecrypt extends JFrame {
 	    	wpub.close();
 	    	wpvt.close();
 	    	waes.close();
+	    	wcps.close();
 	    	
 			List<File> filesToAdd = Arrays.asList(
 			  clavePvt,
@@ -486,7 +534,8 @@ public class EncryptDecrypt extends JFrame {
 			
 			List<File> filesToAdd2 = Arrays.asList(
 			  clavePub,
-			  sal
+			  sal,
+			  carps
 		    );
 		   
 			// Añadimos los archivos creados al nuevo zip
@@ -501,6 +550,7 @@ public class EncryptDecrypt extends JFrame {
 			clavePub.delete();
 			clavePvt.delete();			
 			aes.delete();
+			carps.delete();
 			
 			// Añadimos los datos de los usuarios al zip del admin
 			addUyP(usu, getSecurePassword(pass, s.getBytes()));
@@ -786,16 +836,23 @@ public class EncryptDecrypt extends JFrame {
 		RSA rsa = new RSA();
 		String padre = archivos[0].getParent();
 		File clavesAes = null;
+		File carpetas = null;
 	    try{	    	
 	    	// Accedemos al zip del admin para añadir las claves aes
 			ZipFile zAdmin = new ZipFile("Usuarios/"+us+"/compressed"+us+".zip", ps.toCharArray());						
 			
 			// Pillamos las claves aes
 			String aes = getString("aes.txt");
-	        
-			clavesAes = new File("Usuarios/"+us,"aes.txt");
+	        String cps = getString("carpetas.txt");
+			
+			carpetas = new File("Usuarios/"+us+"/carpetas.txt");
+			clavesAes = new File("Usuarios/"+us,"/aes.txt");
+			
 			FileWriter waes = new FileWriter(clavesAes);	    	
-	    	waes.write(aes);
+	    	FileWriter wcps = new FileWriter(carpetas);
+	    	
+			waes.write(aes);
+	    	wcps.write(cps);
 	    	
 	    	// Pillamos la clave pública del zip
 	    	rsa.setPublicKeyString(getString("rsa_pub.txt"));	    	
@@ -813,26 +870,33 @@ public class EncryptDecrypt extends JFrame {
 	                byte[] content = getFile(archivos[i]);	
 	                byte[] encrypted = encryptFile(key, content);
 	
-	                //Guardamos el archivo encriptado
+	                // Guardamos el archivo encriptado
 	                String nombre = archivos[i].getName();
 	                new File(padre+"/Encriptadas"+us).mkdirs();
-	                saveFile(encrypted,nombre,padre+"/Encriptadas"+us+"/");	
+	                saveFile(encrypted,nombre,padre+"/Encriptadas"+us+"/");	              
 	                
 	                //Guardamos la clave en clavesAes.txt 	                
 	                String encodedKey = encryptAES(key, rsa);  
-	                System.out.println("Con RSA " +encodedKey);
-	                System.out.println("Original " + key);
-	
 	                waes.write(encodedKey+" "+ id +"\n");	                
 	            }
 	            
+	            // Guardamos la dirección de los archivos encriptados
+                File f = new File(padre+"/Encriptadas"+us);
+	            wcps.write(f.getAbsolutePath()+"\n");
+                
 	            waes.close();
+	            wcps.close();
 	            
-	            // Añadimos las claves AES a las bases de datos 
-	            // y borramos el archivo de texto para que solo se pueda acceder desde el zip
-	            zAdmin.addFile(clavesAes);
+	            List<File> files = Arrays.asList(clavesAes, carpetas);
+	            
+	            // Añadimos las claves AES a la base de datos  
+	            zAdmin.addFiles(files);
 	            zAdmin.close();  
+	            
+	            // Borramos el archivo de texto para que solo se pueda acceder desde el zip
 	            clavesAes.delete();
+	            carpetas.delete();
+	            
 	            dev = true;
 	            
 	        } catch (Exception e) {
