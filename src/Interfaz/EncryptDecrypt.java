@@ -1113,28 +1113,28 @@ public class EncryptDecrypt extends JFrame {
 		JLabel lblTitulo = new JLabel("Top Cypher");
 		lblTitulo.setFont(new Font("Tw Cen MT", Font.BOLD, 30));
 		lblTitulo.setForeground(Color.WHITE);
-		lblTitulo.setBounds(10, 20, 153, 50);
+		lblTitulo.setBounds(10, 20, 300, 50);
 		contentPane.add(lblTitulo);
 		
 		// Etiqueta con el subtítulo de la aplicación
 		JLabel sublblTitulo = new JLabel("Encripta y Desencripta");
 		sublblTitulo.setFont(new Font("Tw Cen MT", Font.BOLD, 25));
 		sublblTitulo.setForeground(Color.WHITE);
-		sublblTitulo.setBounds(176, 56, 255, 50);
+		sublblTitulo.setBounds(176, 56, 306, 50);
 		contentPane.add(sublblTitulo);
 		
 		// Etiqueta sobre el botón de encriptar
 		JLabel lblEligeLosArchivos = new JLabel("Escoge los archivos que quieres encriptar");
 		lblEligeLosArchivos.setForeground(Color.WHITE);
 		lblEligeLosArchivos.setFont(new Font("Tw Cen MT", Font.BOLD, 16));
-		lblEligeLosArchivos.setBounds(153, 116, 278, 39);
+		lblEligeLosArchivos.setBounds(153, 116, 339, 39);
 		contentPane.add(lblEligeLosArchivos);
 		
 		// Etiqueta sobre el botón de desencriptar
 		JLabel lblEscogeLosArchivos = new JLabel("Escoge los archivos que quieres desencriptar");
 		lblEscogeLosArchivos.setForeground(Color.WHITE);
 		lblEscogeLosArchivos.setFont(new Font("Tw Cen MT", Font.BOLD, 16));
-		lblEscogeLosArchivos.setBounds(145, 213, 302, 39);
+		lblEscogeLosArchivos.setBounds(145, 213, 347, 39);
 		contentPane.add(lblEscogeLosArchivos);
 		
 		// Barra de menú
