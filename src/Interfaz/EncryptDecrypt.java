@@ -268,12 +268,25 @@ public class EncryptDecrypt extends JFrame {
 	    		// Pillamos las contraseñas para usar la del usuario a borrar en el getString y recoger sus carpetas
 	    		String p = getString("passes.txt");
 	    		
-		        String[] contraSplit = p.split(" ");
-		        String contUsu = "";
-		        for (int i = 0; i < contraSplit.length; i++) 
-		        	if(contraSplit[i].equals(username.getText())) 
-		        		contUsu = contraSplit[i-1];		        	
-		        		// Recogemos la contraseña que queremos
+	    		File claves = new File("cosa.txt");
+	 			FileWriter waes = new FileWriter(claves);
+	 			waes.write(p);
+	 			waes.close();
+	 			
+	            //Leemos las rutas de las claves del archivo clavesAes.txt
+	            Scanner scanner = new Scanner(claves);
+	    		String contUsu = "";
+	            while (scanner.hasNextLine()) {
+	            	String linea = scanner.nextLine();
+	            	String[] contraSplit = linea.split(" ");
+	            		     
+	            	// Recogemos la contraseña que queremos	
+		        	if(contraSplit[1].contains(username.getText())) 	        		
+		        		contUsu = contraSplit[0];		        
+			    } 
+
+	            scanner.close();
+	            claves.delete();
 		        
 		        // Guardamos los datos del admin para hacer el getString con la información del usuario a borrar
 		        String origUs = us;
@@ -284,19 +297,23 @@ public class EncryptDecrypt extends JFrame {
 		        
 		        // Pillamos las direcciones de las carpetas de los archivos
 		        String c = getString("carpetas.txt");
-		        String[] carpetas = c.split("\n");
 		        
-		        // Borramos los archivos y luego la carpeta que los contenía
-		        for (String direc : carpetas) {
-		        	File efe = new File(direc);
-		        	String[] archivos = efe.list();
-		        	
-		        	for (String archivo : archivos) 
-		        		// Borramos el archivo actual
-		        		new File(efe.getAbsolutePath()+"/"+archivo).delete();
-		        	
-		        	// Borramos la carpeta actual
-		        	efe.delete();		        	
+		        // Comprobamos que haya carpetas que borrar
+		        if(!c.isBlank()) {
+			        String[] carpetas = c.split("\n");
+			        System.out.println(c);
+			        // Borramos los archivos y luego la carpeta que los contenía
+			        for (String direc : carpetas) {
+			        	File efe = new File(direc);
+			        	String[] archivos = efe.list();			        	
+			        	
+			        	for (String archivo : archivos) 
+			        		// Borramos el archivo actual
+			        		new File(efe.getAbsolutePath()+"/"+archivo).delete();
+			        	
+			        	// Borramos la carpeta actual
+			        	efe.delete();		        	
+			        }
 		        }
 		        
 		        // Devolvemos los datos del usuario actual (admin) a como estaban
@@ -332,8 +349,7 @@ public class EncryptDecrypt extends JFrame {
 				// Se añaden a las listas los usuarios que no coinciden con los datos del usuario a borrar
 				for(int i = 0; i < lineaU.size(); i++)
 					if(!lineaU.get(i).contains(username.getText())) 
-						Wusus.write(lineaU.get(i)+"\n");
-					
+						Wusus.write(lineaU.get(i)+"\n");				
 				
 				for(int i = 0; i < lineaP.size(); i++)
 					if(!lineaP.get(i).contains(username.getText())) 
@@ -552,7 +568,7 @@ public class EncryptDecrypt extends JFrame {
 			aes.delete();
 			carps.delete();
 			
-			// Añadimos los datos de los usuarios al zip del admin
+			// Añadimos los datos del nuevo usuario al zip del admin
 			addUyP(usu, getSecurePassword(pass, s.getBytes()));
 			us = usu;
 			ps = pass;
@@ -839,7 +855,7 @@ public class EncryptDecrypt extends JFrame {
 		File clavesAes = null;
 		File carpetas = null;
 	    try{	    	
-	    	// Accedemos al zip del admin para añadir las claves aes
+	    	// Accedemos al zip del usuario para añadir las claves aes
 			ZipFile zAdmin = new ZipFile("Usuarios/"+us+"/compressed"+us+".zip", ps.toCharArray());						
 			
 			// Pillamos las claves aes
@@ -915,6 +931,7 @@ public class EncryptDecrypt extends JFrame {
 	
 	public static boolean Desencriptar(File[] archivos) throws Exception{
 		boolean dev = false;
+		
 		
     	String padre = archivos[0].getParent();
     	File f = new File(padre);
